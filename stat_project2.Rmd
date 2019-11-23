@@ -3,13 +3,15 @@ title: "Stat6021_Project2"
 author: "Group 5"
 date: "11/12/2019"
 output:
-  word_document: default
+  pdf_document: default
   html_document: default
+  word_document: default
 ---
 
+
+## IMPORT LIBRARIES, LOAD DATA 
+
 ```{r}
-## store data file with the variable name data
-## data cleaning
 ## import library 
 library(stringr)
 library(ggplot2)
@@ -19,28 +21,42 @@ library(boot)
 library(extrafont)
 library(ggthemes)
 data<-read.csv("adult.csv", header=FALSE ,sep=",", na.string = "?")
-#str_replace(data, "-", ".")
+
+## store data file with its variable name data
+colnames(data)<-c("age","workclass", "fnlwgt", "education", "education_num", "marital_status", "occupation", "relationship", "race", "sex", "capital_gain", "capital_loss", "hours_per_week", "native_country", "income")
+
+## attach and review data
+attach(data)
+data
+```
+
+## DATA CLEANING 
+
+```{r include=FALSE}
 nr<-nrow(data)
+#str_replace(data, "-", ".")
 df<-data.frame(data)
 df = df[-1,] # row 1, sex has unwanted lable
 df[1, 1] <-39
+#remove rows with missing values on specified columns
 df<- na.omit(df)
 row.names(df) <- 1:nrow(df)
 data<-df
-
-```
-
-
-```{r}
-colnames(data)<-c("age","workclass", "fnlwgt", "education", "education_num", "marital_status", "occupation", "relationship", "race", "sex", "capital_gain", "capital_loss", "hours_per_week", "native_country", "income")
-attach(data)
-#data
- 
-#remoce missing data
+#remove missing data
 data <- na.omit(data)
-```
 
-```{r}
+## trim L and R white spaces (in columns where detected)    ##11/20/19: RICE added
+trimws(workclass)
+trimws(education)
+trimws(marital_status)
+trimws(occupation)
+trimws(relationship)	
+trimws(race)	
+trimws(native_country)
+
+## still need to replace '?' with 'Unknown' in the below columns: native_country,	workclass, occupation
+
+## change below to numeric
 is.numeric(age)
 age <-as.numeric(age)
 is.numeric(age)
@@ -49,27 +65,17 @@ is.numeric(education_num)
 is.numeric(capital_gain)
 is.numeric(capital_loss)
 is.numeric(hours_per_week)
-
 ```
 
 ```{r}
-#Use box plot to see each predictor vs. income
-##############
+## Use box plot to see each numeric predictor vs. income
 par(mfrow=c(1,3))
 boxplot(age~income)
 boxplot(fnlwgt~income)
-
-###############
 boxplot(education_num~income)
-
-###############
-
 boxplot(capital_gain~income)
 boxplot(capital_loss~income)
-###############
 boxplot(hours_per_week~income)
-
-###############
 
 ```
 
@@ -90,155 +96,180 @@ theme_set(theme_classic())
 
 # Histogram on a Categorical variable
 g <- ggplot(data, aes(sex))
-g + geom_bar(aes(fill=income), width = 0.5) + 
+g + geom_bar(aes(fill=income), width = 0.3) + 
   theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
   labs(title="Histogram on Categorical Variable", 
        subtitle="Income across Age")
-
 ```
 
-```{r}
-data$education <- trimws(data$education) 
-```
-
-
-
+----------------------------------------
+##  EDUCATION  ##
+----------------------------------------
 ```{r}
 summary(data$education)
 ```
 
+```{r include=FALSE}
+## group as < HS 
+data$education <-gsub('Preschool', '< HS', data$education)
+data$education <-gsub('1st-4th', '< HS', data$education)
+data$education <-gsub('5th-6th', '< HS', data$education)
+data$education <-gsub('7th-8th', '< HS', data$education)
+data$education <-gsub('9th', '< HS', data$education)
+data$education <-gsub('10th', '< HS', data$education)
+data$education <-gsub('11th', '< HS', data$education)
+data$education <-gsub('12th', '< HS', data$education)
 
-```{r}
-###combine high school below or 12th together 
-data$education <-gsub('^12th', 'beforeHS', data$education)
-data$education <-gsub('^10th', 'beforeHS', data$education)
-data$education <-gsub('^11th', 'beforeHS', data$education)
-data$education <-gsub('^1st-4th', 'beforeHS', data$education)
-data$education <-gsub('^5th-6th', 'beforeHS', data$education)
-data$education <-gsub('^7th-8th', 'beforeHS', data$education)
-data$education <-gsub('^9th', 'beforeHS', data$education)
-data$education <-gsub('^Preschool', 'beforeHS', data$education)
-data$education<-as.factor(data$education)
-```
+## rename as HS                                                      ## RICE added
+data$education <-gsub('HS-grad', 'High School', data$education) 
 
+## group as some college                                             ## RICE added
+data$education <-gsub('Assoc-acdm', 'Some College',data$education)
+data$education <-gsub('Assoc-voc','Some College', data$education)
+data$education <-gsub('Some-college', 'Some College', data$education)
 
-```{r}
-summary(data$education)
+## group as Under-Grad                                               ## RICE added
+data$education <-gsub('Assoc-acdm', 'Undergraduate', data$education)
+data$education <-gsub('Assoc-voc', 'Undergraduate', data$education)
+data$education <-gsub('Bachelors', 'Undergraduate', data$education)
+data$education <-gsub('Prof-school', 'Undergraduate', data$education)
+
+## group as Grad                                                     ## RICE added
+data$education <-gsub('Masters', 'Graduate', data$education)
+data$education <-gsub('Doctorate', 'Graduate', data$education)
+
+## convert to factor
+data$education <- as.factor(data$education)
 ```
 
 ```{r}
 theme_set(theme_classic())
 
-# Histogram on a Categorical variable
+# Histogram on a Categorical variable                               ## RICE added
 g <- ggplot(data, aes(education))
 g + geom_bar(aes(fill=income), width = 0.5) + 
   theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
   labs(title="Histogram on Categorical Variable", 
-       subtitle="Income across education")
+       subtitle="Income across highest level of education")
 ```
 
-
+----------------------------------------
+##  WORK CLASS  ##
+----------------------------------------
 ```{r}
 summary(data$workclass)
 ```
 
-```{r}
-data$workclass <- trimws(data$workclass) 
-```
 
-```{r}
-levels(data$workclass)[1] <- 'Unknown'
+```{r include=FALSE}
+#levels(data$workclass)[1] <- 'Unknown'
 
-# combine into Sele-Employed job
-data$workclass <- gsub('^Self-emp-inc', 'Self-Employed', data$workclass)
-data$workclass <- gsub('^Self-emp-not-inc', 'Self-Employed', data$workclass)
+# group as into Self-Employed
+data$workclass <- gsub('Self-emp-inc', 'Self-Employed', data$workclass)
+data$workclass <- gsub('Self-emp-not-inc', 'Self-Employed', data$workclass)
 
-# combine into Other/Unknown
-data$workclass <- gsub('^Never-worked', 'Other', data$workclass)
-data$workclass <- gsub('^Without-pay', 'Other', data$workclass)
-data$workclass <- gsub('^Other', 'Others', data$workclass)
-data$workclass <- gsub('^Unknown', 'Other', data$workclass)
+# combine into  Other/Unknown                                                     ## RICE added
+data$workclass <- gsub('Never-worked', 'Other-Unknown', data$workclass)         
+data$workclass <- gsub('Without-pay', 'Other-Unknown', data$workclass)
+data$workclass <- gsub('?', 'Other-Unknown', data$workclass)
 
-# combine into Government job
-data$workclass <- gsub('^Federal-gov', 'Government', data$workclass)
-data$workclass <- gsub('^Local-gov', 'Government', data$workclass)
-data$workclass <- gsub('^State-gov', 'Government', data$workclass) 
+# combine into Government
+data$workclass <- gsub('Federal-gov', 'Government', data$workclass)
+data$workclass <- gsub('Local-gov', 'Government', data$workclass)
+data$workclass <- gsub('State-gov', 'Government', data$workclass) 
  
+# Update name to Private Sector 
+data$workclass <- gsub('Private', 'Private Sector', data$workclass) ##RICE: added
 
 data$workclass <- as.factor(data$workclass)
 ```
 
-
-```{r}
-data <- na.omit(data)
-```
-
-```{r}
-data$workclass <- gsub('[[:punct:]]', 'Other', data$workclass)
-data$workclass <- as.factor(data$workclass)
-```
-
-
-```{r}
-summary(data$workclass)
-```
 ```{r}
 theme_set(theme_classic())
 
 # Histogram on a Categorical variable
+g <- ggplot(data, aes(data$workclass))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Profession")
+```
+
+----------------------------------------
+##  RACE  ##
+----------------------------------------
+```{r}
+summary(data$race)
+```
+
+```{r}
+# combine into 'Other'
+data$race <- gsub('Asian-Pac-Islander', 'Other', data$race)   ## RICE added
+data$race <- gsub('Amer-Indian-Eskimo', 'Other', data$race)   ## RICE added
+
+# convert to factor
+data$race <- as.factor(data$race)
+```
+
+```{r}
+# Histogram on a Categorical variable  #RICE added
+theme_set(theme_classic())
 g <- ggplot(data, aes(race))
 g + geom_bar(aes(fill=income), width = 0.5) + 
   theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
   labs(title="Histogram on Categorical Variable", 
-       subtitle="Income across education")
+       subtitle="Income across race")
+```
+
+----------------------------------------
+##  MARITAL STATUS  ##
+----------------------------------------
+```{r}
+summary(data$marital_status)                                                ## RICE added
 ```
 
 ```{r}
-summary(data$marital_status)
+# combine into 'Married'
+data$marital_status <- gsub('Married-civ-spouse', 'Married', data$marital_status)   ## RICE added
+data$marital_status <- gsub('Married-AF-spouse', 'Married', data$marital_status)    ## RICE added
+data$marital_status <- gsub('Married-spouse-absent', 'Married', data$marital_status)## RICE added
+
+# combine with 'Not Married' 
+data$marital_status <- gsub('Never-married', 'Not Married', data$marital_status)    ## RICE added
+data$marital_status <- gsub('Divorced', 'Not Married', data$marital_status)         ## RICE added
+data$marital_status <- gsub('Separated', 'Not Married', data$marital_status)        ## RICE added
+data$marital_status <- gsub('Widowed', 'Not Married', data$marital_status)          ## RICE added
+
+data$marital_status <- as.factor(data$marital_status)
 ```
 
-
 ```{r}
-theme_set(theme_classic())
+theme_set(theme_classic())                                        ## RICE added
 
 # Histogram on a Categorical variable
 g <- ggplot(data, aes(marital_status))
 g + geom_bar(aes(fill=income), width = 0.5) + 
   theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
   labs(title="Histogram on Categorical Variable", 
-       subtitle="Income across education")
+       subtitle="Income across marrital status")
 ```
+```
+```
+----------------------------------------
+##  NATIVE COUNTRY  ##
+----------------------------------------
 ```{r}
-theme_set(theme_classic())
+summary(data$native_country)                                                ## RICE added
+```
+                       
+## cATEGORIZE AS REGION
+```{r}
+# combine into '_________'
+#data$native_country <- gsub('__________', '_____________', data$native_country)   ## RICE added
 
-# Histogram on a Categorical variable
-g <- ggplot(data, aes(relationship))
-g + geom_bar(aes(fill=income), width = 0.5) + 
-  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
-  labs(title="Histogram on Categorical Variable", 
-       subtitle="Income across education")
-```
-
-```{r}
-data$native_country <- trimws(data$native_country) 
-summary(data$native_country)
-```
-```{r}
 #Need to delete Outlying-US(Guam-USVI-etc)   
-data$native_country <- as.factor(data$native_country)
+#data$native_country <- as.factor(data$native_country)
 ```
-
-```{r}
-summary(data$native_country)
-```
-```{r}
-data <- na.omit(data)
-```
-
-```{r}
-data$native_country <- as.factor(data$native_country)
-```
-
 
 ```{r}
 theme_set(theme_classic())
@@ -248,7 +279,37 @@ g <- ggplot(data, aes(native_country))
 g + geom_bar(aes(fill=income), width = 0.5) + 
   theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
   labs(title="Histogram on Categorical Variable", 
-       subtitle="Income across education")
+       subtitle="Income across native country")
 ```
+
+----------------------------------------
+##  RACE  
+----------------------------------------
+
+```{r}
+summary(data$hours_per_week)                                           ## RICE added
+```
+
+```{r}
+## Need to figure out how to specify a range of #s belongs to a category 
+
+## group by '<40'
+#data$hours_per_week <- gsub(?????, '<40', data$hours_per_week)     ## RICE added
+
+## group by '>=40'
+#data$hours_per_week <- gsub(?????, '>=40', data$hours_per_week)   ## RICE added
+
+## convert to factor
+## data$race <- as.factor(data$hours_per_week)
+```
+
+```{r}
+# Histogram on a Categorical variable                              #RICE added
+theme_set(theme_classic())
+g <- ggplot(data, aes(hours_per_week))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across race")
 ```
 
